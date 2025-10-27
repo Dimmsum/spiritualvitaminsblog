@@ -15,7 +15,7 @@ export async function GET(
       .select(
         `
         *,
-        author:users(id, name, avatar_url),
+        author:users(id, name, email, avatar_url),
         comments(
           id,
           content,
@@ -43,6 +43,7 @@ export async function GET(
       author: {
         id: post.author.id,
         name: post.author.name,
+        email: post.author.email,
         avatar: post.author.avatar_url,
       },
       images: post.images || [],
@@ -80,6 +81,74 @@ export async function GET(
     console.error("Error fetching post:", error);
     return NextResponse.json(
       { error: "Failed to fetch post" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE a post
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = await createClient();
+
+    // Get the authenticated user
+    const {
+      data: { user: authUser },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !authUser) {
+      return NextResponse.json(
+        { error: "Unauthorized - Please sign in" },
+        { status: 401 }
+      );
+    }
+
+    // Get the post to check ownership
+    const { data: post, error: fetchError } = await supabase
+      .from("posts")
+      .select("author_id, author:users!inner(email)")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !post) {
+      return NextResponse.json({ error: "Post not found" }, { status: 404 });
+    }
+
+    // Check if user is the author or admin
+    const authorEmail = (post.author as any).email;
+    const isAuthor = authorEmail === authUser.email;
+    const isAdmin =
+      authUser.email === "flawlesslee.rrl@gmail.com" ||
+      authUser.user_metadata?.role === "admin";
+
+    if (!isAuthor && !isAdmin) {
+      return NextResponse.json(
+        { error: "Unauthorized - You can only delete your own posts" },
+        { status: 403 }
+      );
+    }
+
+    // Delete the post (cascading will handle comments and likes)
+    const { error: deleteError } = await supabase
+      .from("posts")
+      .delete()
+      .eq("id", id);
+
+    if (deleteError) throw deleteError;
+
+    return NextResponse.json(
+      { message: "Post deleted successfully" },
+      { status: 200 }
+    );
+  } catch (error) {
+    console.error("Error deleting post:", error);
+    return NextResponse.json(
+      { error: "Failed to delete post" },
       { status: 500 }
     );
   }

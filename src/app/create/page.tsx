@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, Image as ImageIcon, X, Plus, Lock } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import Toast from "@/components/Toast";
 
 export default function CreatePostPage() {
   const router = useRouter();
@@ -20,6 +21,11 @@ export default function CreatePostPage() {
   });
   const [images, setImages] = useState<string[]>([]);
   const [imageUrl, setImageUrl] = useState("");
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdmin) {
@@ -65,6 +71,7 @@ export default function CreatePostPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsSubmitting(true);
 
     try {
       const response = await fetch("/api/posts", {
@@ -96,12 +103,36 @@ export default function CreatePostPage() {
         throw new Error("Failed to create post");
       }
 
-      alert("Post created successfully!");
-      router.push("/");
-      router.refresh();
+      setToast({
+        message: "Post published successfully! 🎉",
+        type: "success",
+      });
+
+      // Reset form
+      setFormData({
+        title: "",
+        excerpt: "",
+        content: "",
+        category: "Faith",
+        tags: "",
+        scriptureVerse: "",
+        scriptureReference: "",
+      });
+      setImages([]);
+
+      // Redirect after showing toast
+      setTimeout(() => {
+        router.push("/");
+        router.refresh();
+      }, 1500);
     } catch (error) {
       console.error("Error creating post:", error);
-      alert("Failed to create post. Please try again.");
+      setToast({
+        message: "Failed to create post. Please try again.",
+        type: "error",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -350,9 +381,17 @@ export default function CreatePostPage() {
           <div className="flex items-center space-x-4">
             <button
               type="submit"
-              className="px-8 py-3 bg-[#8b0000] text-white rounded-lg hover:bg-[#660000] transition-colors font-medium"
+              disabled={isSubmitting}
+              className="px-8 py-3 bg-[#8b0000] text-white rounded-lg hover:bg-[#660000] transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Publish Post
+              {isSubmitting ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Publishing...</span>
+                </>
+              ) : (
+                "Publish Post"
+              )}
             </button>
             <Link
               href="/"
@@ -363,6 +402,15 @@ export default function CreatePostPage() {
           </div>
         </form>
       </div>
+
+      {/* Toast Notification */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
     </div>
   );
 }

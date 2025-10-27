@@ -6,6 +6,7 @@ import ImageGallery from "@/components/ImageGallery";
 import LikeButton from "@/components/LikeButton";
 import ShareButton from "@/components/ShareButton";
 import CommentSection from "@/components/CommentSection";
+import DeletePostButton from "@/components/DeletePostButton";
 
 async function getPost(id: string): Promise<BlogPost | null> {
   try {
@@ -52,14 +53,17 @@ export default async function BlogPostPage({
   return (
     <div className="bg-gray-50 min-h-screen">
       <article className="container mx-auto px-4 py-12 max-w-4xl">
-        {/* Back Button */}
-        <Link
-          href="/"
-          className="inline-flex items-center space-x-2 text-[#8b0000] hover:text-[#660000] mb-8 transition-colors"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back to all posts</span>
-        </Link>
+        {/* Back Button and Delete Button */}
+        <div className="flex items-center justify-between mb-8">
+          <Link
+            href="/"
+            className="inline-flex items-center space-x-2 text-[#8b0000] hover:text-[#660000] transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to all posts</span>
+          </Link>
+          <DeletePostButton postId={post.id} authorEmail={post.author.email || ""} />
+        </div>
 
         {/* Header */}
         <header className="mb-8">
